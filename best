@@ -1,0 +1,50 @@
+#!/usr/bin/python3
+# COMP3311 20T3 Ass3 ... print name, year, ratings of top N movies
+
+import sys
+import psycopg2
+
+# set up some globals
+
+usage = "Usage: best [N]"
+db = None
+# top N highest-rating movies, default 10
+bestN = 0
+
+# process command-line args
+
+argc = len(sys.argv)
+# default N = 10
+if (argc == 1):
+  bestN = 10
+# if the user supplies a number >= 1 
+elif (argc == 2 and sys.argv[1].isdigit() and int(sys.argv[1]) >= 1):
+  bestN = sys.argv[1]
+else:
+  print(usage)
+  exit(1)
+
+# manipulate database
+# select the rating, title and year of the best N movies
+query = """
+select rating, title, start_year 
+from Movies 
+order by rating desc, title limit %s;
+"""
+
+try:
+  db = psycopg2.connect("dbname=imdb")
+  cur = db.cursor()
+  cur.execute(query, [bestN])
+  movies = cur.fetchall()
+
+  for movie in movies:
+    rating, title, year = movie
+    print(float(rating), title, '(' + str(year) + ')')
+
+except psycopg2.Error as err:
+  print("DB error: ", err)
+finally:
+  if db:
+    db.close()
+

@@ -1,0 +1,112 @@
+#!/usr/bin/python3
+# COMP3311 20T3 Ass3 ... print info about cast and crew for Movie
+
+import sys
+import psycopg2
+
+# set up some globals
+
+usage = "Usage: minfo 'MovieTitlePattern' [Year]"
+db = None
+hasYear = False
+
+# process command-line args
+
+argc = len(sys.argv)
+if (argc == 2):
+  movieName = sys.argv[1]
+elif (argc == 3 and sys.argv[2].isdigit()):
+  movieName = sys.argv[1]
+  movieYear = sys.argv[2]
+  hasYear = True
+else:
+  print(usage)
+  exit(1)
+
+# manipulate database
+# select the information of the movies by given the title
+movieCheck = """
+select title, start_year, id 
+from Movies 
+where title ~* %s 
+order by start_year, title
+"""
+# select the information of the movie by given the title and start year
+movieYearCheck = """
+select title, start_year, id 
+from Movies 
+where title ~* %s and start_year = %s 
+order by title
+"""
+
+# principals function return the list of names and acting roles/crew roles in a given movie
+principals = "select * from principals(%s, %s, %s)"
+
+try:
+  db = psycopg2.connect("dbname=imdb")
+  cur = db.cursor()
+  # if provide both year and name of the movie
+  if (hasYear):
+    cur.execute(movieYearCheck, [movieName, movieYear])
+    result = cur.fetchall()
+  # if only name of the movie
+  else:
+    cur.execute(movieCheck, [movieName])
+    result = cur.fetchall()
+  
+  # if no movies matching the supplied partial-name
+  if len(result) == 0:
+    if (hasYear):
+      print(f"No movie matching '{movieName}' {movieYear}")
+    else:
+      print(f"No movie matching '{movieName}'")
+      exit(1)
+  # one or more movies matched
+  else:
+    # matches multiple movies
+    if (len(result) > 1):
+      if (hasYear):
+        print(f"Movies matching '{movieName}' {movieYear}")
+      else:
+        print(f"Movies matching '{movieName}'")
+      print("===============")
+      for movie in result:
+        print(movie[0], '(' + str(movie[1]) + ')')
+    # matches exactly one movie
+    else: # len(result) = 1
+      movie = result[0]
+      # get the title, year, id of the movie
+      title, year, id = movie
+      
+      print(f"{title} ({year})")
+      print("===============")
+      print("Starring")
+
+      cur.execute(principals, ['acting_roles', 'played', id])
+      actors = cur.fetchall()
+
+      # The actors' name and their role in the movie
+      for actor in actors:
+        name, played = actor[0], actor[1]
+        print(" " + name + " as " + played)
+
+
+      print("and with")
+
+      cur.execute(principals, ['crew_roles', 'role', id])
+      crews = cur.fetchall()
+
+      # The crews' name and their role in the movie
+      for crew in crews:
+        name = crew[0]
+        role = crew[1].replace('_', ' ').capitalize()
+        print(" " + name + ": " + role)
+
+
+
+except psycopg2.Error as err:
+  print("DB error: ", err)
+finally:
+  if db:
+    db.close()
+

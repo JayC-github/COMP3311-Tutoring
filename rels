@@ -1,0 +1,97 @@
+#!/usr/bin/python3
+# COMP3311 20T3 Ass3 ... print info about different releases for Movie
+
+import sys
+import psycopg2
+
+# function for print the aliases' information of a movie
+def alias_info(region, langue, extra_info):
+  # if an alias has no region or language
+  if (not region and not language):
+    print(f"({extra_info})")
+  # if an alias has region but not language
+  elif (region and not language): 
+    print(f"(region: {region.strip()})")
+  # if an alias has language but not region
+  elif (language and not region): 
+    print(f"(language: {language.strip()})")
+  # if an alias has both region and language
+  else:
+    print(f"(region: {region.strip()}, language: {language.strip()})")  
+
+# set up some globals
+
+usage = "Usage: rels 'PartialMovieTitle'"
+db = None
+
+# process command-line args
+
+argc = len(sys.argv)
+if (argc == 2):
+  movieName = sys.argv[1]
+else:
+  print(usage)
+  exit(1)
+
+# manipulate database
+# select the tile, year and movie id by given the movie name
+movieCheck = """
+select title, start_year, id 
+from Movies 
+where title ~* %s 
+order by start_year, title
+"""
+# select the title, region etc. of aliases of a movie by given the movie id
+aliasCheck = """
+select local_title, region, language, extra_info 
+from Aliases 
+where movie_id = %s 
+order by ordering
+"""
+
+try:
+  db = psycopg2.connect("dbname=imdb")
+  cur = db.cursor()
+  cur.execute(movieCheck, [movieName])
+  movies = cur.fetchall()
+  # if no movies matching the supplied partial-name
+  if len(movies) == 0:
+    print(f"No movie matching '{movieName}'")
+    exit(1)
+  # there are one or more movies matching, len(movies) > 0
+  else:
+    # matches multiple movies, print a list of matching movies
+    if (len(movies) > 1):
+      print(f"Movies matching '{movieName}'")
+      print("===============")
+      for movie in movies:
+        title, year = movie[0], movie[1]
+        print(title, '(' + str(year) + ')')
+    # matches exactly one movie, print a list of aliases of the movie
+    else: # len(result) = 1
+      movie = movies[0]
+      # get the information of the movie
+      title, year, id = movie
+      # check if the movie has the any other aliases
+      cur.execute(aliasCheck, [id])
+      aliases = cur.fetchall()
+
+      # if there are no aliases
+      if (len(aliases) == 0):
+        print(title, '(' + str(year) + ')' + ' has no alternative releases')
+      else:
+        print(title, '(' + str(year) + ')' + ' was also released as')
+        for alias in aliases:
+          title, region, language, extra_info = alias
+          # print the local tile
+          print(f"'{title}'", end = " ")
+          # function to print the other information of alias
+          alias_info(region, language, extra_info)
+          
+
+except psycopg2.Error as err:
+  print("DB error: ", err)
+finally:
+  if db:
+    db.close()
+

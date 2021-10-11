@@ -1,0 +1,134 @@
+#!/usr/bin/python3
+# COMP3311 20T3 Ass3 ... get Name's biography/filmography
+
+import sys
+import psycopg2
+
+# print the birth and death year of a person
+def person_year(start_year, end_year):
+  # if no birth and death year
+  if (not start_year and not end_year):
+    print("(???)")
+  # if has birth year and no death year
+  elif (start_year and not end_year):
+    print(f"({start_year}-)")
+  elif (not start_year and end_year):
+    print(f"(-{end_year})")
+  else:
+    print(f"({start_year}-{end_year})")
+
+
+# set up some globals
+
+usage = "Usage: bio 'NamePattern' [Year]"
+db = None
+hasYear = False
+
+# process command-line args
+
+argc = len(sys.argv)
+if (argc == 2):
+  personName = sys.argv[1]
+elif (argc == 3 and sys.argv[2].isdigit()):
+  personName = sys.argv[1]
+  birthYear = sys.argv[2]
+  hasYear = True
+else:
+  print(usage)
+  exit(1)
+# manipulate database
+
+# select information of the matching people by given the name
+personCheck = """
+select name, birth_year, death_year, id 
+from Names 
+where name ~* %s 
+order by name, birth_year, id
+"""
+# select information of the matching people by given the name and year
+personYearCheck = """
+select name, birth_year, death_year, id 
+from Names 
+where name ~* %s and birth_year = %s 
+order by name, id
+"""
+# select information of the moives which the given person has been a principal in
+movies = """
+select m.title, m.start_year, m.id
+from Movies m join Principals p on (m.id = p.movie_id) 
+where p.name_id = %s
+order by m.start_year, m.title, m.id
+"""
+# roles function return a list of acting roles/crew roles of a given person in a given movie
+roles = "select * from roles(%s, %s, %s, %s)"
+
+try:
+  db = psycopg2.connect("dbname=imdb")
+  cur = db.cursor()
+  # if provide both name and year of the person
+  if (hasYear):
+    cur.execute(personYearCheck, [personName, birthYear])
+    result = cur.fetchall()
+  # if only the name of the person
+  else:
+    cur.execute(personCheck, [personName])
+    result = cur.fetchall()
+  
+  # if no name matching the supplied partial-name
+  if len(result) == 0:
+    print(f"No name matching '{personName}'")
+    exit(1)
+  # one or more names matched
+  else:
+    # matches multiple names
+    if (len(result) > 1):
+      print(f"Names matching '{personName}'")
+      print("===============")
+
+      # person[0] = name, person[1] = start_year, person[2] = end_year  
+      for person in result:
+        name, start_year, end_year = person[0], person[1], person[2]
+        print(name, end = ' ')
+        # print the birth and death year of a person
+        person_year(start_year, end_year)
+
+    # matches exactly one movie
+    else: # len(result) = 1
+      person = result[0]
+      # get the name, start_year, end_year, id of the person
+      name, start_year, end_year, pid = person
+
+      print(f"Filmography for {name}", end = " ") 
+      # print the birth and death year of a person
+      person_year(start_year, end_year)
+    
+      print("===============")
+      # get the movies that this person has been a principal in
+      cur.execute(movies, [pid])
+      result = cur.fetchall()
+      for movie in result:
+        title, year, mid = movie
+        print(f"{title} ({year})")
+        
+        # for acting roles in this movie
+        cur.execute(roles, ['acting_roles', 'played', mid, pid])
+        result = cur.fetchall()
+        
+        for act in result:
+          act_role = act[0]
+          print(" playing " + act_role)
+        
+        # for crew roles in this movie
+        cur.execute(roles, ['crew_roles', 'role', mid, pid])
+        result = cur.fetchall()
+        
+        for crew in result:
+          # replace the '_' by the space and capitalizes
+          crew_role = crew[0].replace('_', ' ').capitalize()
+          print(" as " + crew_role)
+      
+except psycopg2.Error as err:
+  print("DB error: ", err)
+finally:
+  if db:
+    db.close()
