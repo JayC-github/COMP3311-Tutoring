@@ -9,5 +9,5 @@ What can I do instead?
 New Guide with something similar but different and won’t kill d.cse
 https://abiram.me/cse-setup
 
-Guide from Kyu-Sang Kim: Installing PostgreSQL on WSL2
+# Guide from Kyu-Sang Kim: Installing PostgreSQL on WSL2
 https://gist.github.com/hexDoor/14ab7fbb8b6301a150a332174e861b26
