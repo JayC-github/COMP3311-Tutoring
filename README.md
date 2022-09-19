@@ -11,3 +11,8 @@ https://abiram.me/cse-setup
 
 # Guide from Kyu-Sang Kim: Installing PostgreSQL on WSL2
 https://gist.github.com/hexDoor/14ab7fbb8b6301a150a332174e861b26
+
+# Set up On CSE machine / Vlab
+You can log into d2 from a command-line (shell) window on any CSE machine (including vlab) via the command:
+
+$ ssh nw-syd-vxdb2
