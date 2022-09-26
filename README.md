@@ -13,4 +13,7 @@ https://abiram.me/posts
 # Guide from Kyu-Sang Kim: Installing PostgreSQL on WSL2
 https://gist.github.com/hexDoor/14ab7fbb8b6301a150a332174e861b26
 
+# ER to Relational Mapping
+https://cgi.cse.unsw.edu.au/~cs3311/21T1/lectures/er-rel-mapping/slides.html
+
 
